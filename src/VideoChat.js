@@ -8,6 +8,8 @@ const VideoChat = () => {
     const remoteVideoRef = useRef(null);
     const peerConnectionRef = useRef(null);
     const [isCallStarted, setIsCallStarted] = useState(false);
+    const [isUsingBackCamera, setIsUsingBackCamera] = useState(false);
+    const [currentStream, setCurrentStream] = useState(null);
 
     // ICE servers configuration
     const iceServers = {
@@ -51,36 +53,80 @@ const VideoChat = () => {
             peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
         });
 
-        // Get local video and audio stream
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then((stream) => {
-                if (localVideoRef.current) {
-                    localVideoRef.current.srcObject = stream;
-                }
-                stream.getTracks().forEach((track) => {
-                    peerConnectionRef.current.addTrack(track, stream);
-                });
-            })
-            .catch((error) => {
-                console.error('Error accessing media devices.', error);
-            });
+        // Get the initial camera stream
+        getCameraStream(isUsingBackCamera);
 
         // Clean up function
         return () => {
+            endCall();
             socket.off('offer');
             socket.off('answer');
             socket.off('ice-candidate');
-            if (peerConnectionRef.current) {
-                peerConnectionRef.current.close();
-            }
         };
     }, []);
+
+    const getCameraStream = async (useBackCamera) => {
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+        }
+
+        const videoConstraints = {
+            video: {
+                facingMode: useBackCamera ? { exact: 'environment' } : 'user'
+            },
+            audio: true
+        };
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(videoConstraints);
+            setCurrentStream(stream);
+            if (localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+            }
+            stream.getTracks().forEach((track) => {
+                peerConnectionRef.current.addTrack(track, stream);
+            });
+        } catch (error) {
+            console.error('Error accessing media devices.', error);
+        }
+    };
 
     const startCall = async () => {
         setIsCallStarted(true);
         const offer = await peerConnectionRef.current.createOffer();
         await peerConnectionRef.current.setLocalDescription(offer);
         socket.emit('offer', offer);
+    };
+
+    const endCall = () => {
+        // Stop the current stream and tracks
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+        }
+
+        // Close the peer connection
+        if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+            peerConnectionRef.current = new RTCPeerConnection(iceServers); // Reset the peer connection
+        }
+
+        // Reset states
+        setIsCallStarted(false);
+        setCurrentStream(null);
+        if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = null;
+        }
+        if (localVideoRef.current) {
+            localVideoRef.current.srcObject = null;
+        }
+    };
+
+    const toggleCamera = () => {
+        setIsUsingBackCamera((prev) => {
+            const newCameraMode = !prev;
+            getCameraStream(newCameraMode);
+            return newCameraMode;
+        });
     };
 
     const styles = {
@@ -118,7 +164,8 @@ const VideoChat = () => {
             boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
             zIndex: 1,
         },
-        callButton: {
+        
+        button: {
             marginTop: '20px',
             padding: '10px 20px',
             fontSize: window.innerWidth <= 768 ? '14px' : '16px', // Adjust font size for mobile
@@ -127,6 +174,18 @@ const VideoChat = () => {
             border: 'none',
             borderRadius: '5px',
             cursor: 'pointer',
+            marginRight: '10px',
+        },
+        buttonend: {
+            marginTop: '20px',
+            padding: '10px 20px',
+            fontSize: window.innerWidth <= 768 ? '14px' : '16px', // Adjust font size for mobile
+            backgroundColor: '#960018',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            marginRight: '10px',
         },
     };
 
@@ -137,7 +196,11 @@ const VideoChat = () => {
                 <video ref={localVideoRef} autoPlay muted style={styles.localVideo} />
             </div>
             <div>
-                {!isCallStarted && <button onClick={startCall} style={styles.callButton}>Start Call</button>}
+                {!isCallStarted && <button onClick={startCall} style={styles.button}>Start Call</button>}
+                {isCallStarted && <button onClick={endCall} style={styles.buttonend}>End Call</button>}
+                <button onClick={toggleCamera} style={styles.button}>
+                    Switch to {isUsingBackCamera ? 'Front' : 'Back'} Camera
+                </button>
             </div>
         </div>
     );
