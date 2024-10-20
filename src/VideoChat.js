@@ -180,6 +180,17 @@ const VideoChat = () => {
             boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
             zIndex: 1,
         },
+        buttonend: {
+            marginTop: '20px',
+            padding: '10px 20px',
+            fontSize: window.innerWidth <= 768 ? '14px' : '16px', // Adjust font size for mobile
+            backgroundColor: '#f40035',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            marginRight: '10px',
+        },
         button: {
             marginTop: '20px',
             padding: '10px 20px',
@@ -201,7 +212,7 @@ const VideoChat = () => {
             </div>
             <div>
                 {!isCallStarted && <button onClick={startCall} style={styles.button}>Start Call</button>}
-                {isCallStarted && <button onClick={endCall} style={styles.button}>End Call</button>}
+                {isCallStarted && <button onClick={endCall} style={styles.buttonend}>End Call</button>}
                 <button onClick={toggleCamera} style={styles.button}>
                     Switch to {isUsingBackCamera ? 'Front' : 'Back'} Camera
                 </button>
