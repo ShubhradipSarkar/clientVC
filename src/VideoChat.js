@@ -17,7 +17,15 @@ const VideoChat = () => {
             { urls: 'stun:stun.l.google.com:19302' }
         ]
     };
-
+    useEffect(()=>{
+        socket.on('server-full', (message) => {
+            alert(message); // Notify the user that the server is full
+        });
+    
+        return () => {
+            socket.off('server-full');
+        };
+    }, [])
     useEffect(() => {
         // Setup WebRTC peer connection
         peerConnectionRef.current = new RTCPeerConnection(iceServers);
@@ -52,7 +60,7 @@ const VideoChat = () => {
         socket.on('ice-candidate', (candidate) => {
             peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
         });
-
+        
         // Get the initial camera stream
         getCameraStream(isUsingBackCamera);
 
