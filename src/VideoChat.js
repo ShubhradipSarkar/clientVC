@@ -83,9 +83,17 @@ const VideoChat = () => {
             if (localVideoRef.current) {
                 localVideoRef.current.srcObject = stream;
             }
-            stream.getTracks().forEach((track) => {
-                peerConnectionRef.current.addTrack(track, stream);
-            });
+            // Replace the video track in the peer connection
+            const videoTrack = stream.getVideoTracks()[0];
+            const sender = peerConnectionRef.current.getSenders().find(s => s.track.kind === 'video');
+            if (sender) {
+                sender.replaceTrack(videoTrack);
+            } else {
+                // Add tracks if not already added
+                stream.getTracks().forEach((track) => {
+                    peerConnectionRef.current.addTrack(track, stream);
+                });
+            }
         } catch (error) {
             console.error('Error accessing media devices.', error);
         }
@@ -164,23 +172,11 @@ const VideoChat = () => {
             boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
             zIndex: 1,
         },
-        
         button: {
             marginTop: '20px',
             padding: '10px 20px',
             fontSize: window.innerWidth <= 768 ? '14px' : '16px', // Adjust font size for mobile
             backgroundColor: '#007bff',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            marginRight: '10px',
-        },
-        buttonend: {
-            marginTop: '20px',
-            padding: '10px 20px',
-            fontSize: window.innerWidth <= 768 ? '14px' : '16px', // Adjust font size for mobile
-            backgroundColor: '#960018',
             color: '#fff',
             border: 'none',
             borderRadius: '5px',
@@ -197,7 +193,7 @@ const VideoChat = () => {
             </div>
             <div>
                 {!isCallStarted && <button onClick={startCall} style={styles.button}>Start Call</button>}
-                {isCallStarted && <button onClick={endCall} style={styles.buttonend}>End Call</button>}
+                {isCallStarted && <button onClick={endCall} style={styles.button}>End Call</button>}
                 <button onClick={toggleCamera} style={styles.button}>
                     Switch to {isUsingBackCamera ? 'Front' : 'Back'} Camera
                 </button>
